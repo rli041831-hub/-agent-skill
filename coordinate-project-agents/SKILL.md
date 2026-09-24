@@ -19,13 +19,6 @@ The user works with agents in other tools or chats. Act as the coordinator: insp
 8. Integrate in dependency order on the agreed branch, resolve shared-file conflicts with the owner, and run actual cross-module user flows. Separate code review, integration, and release acceptance: passing unit tests alone does not establish any of the latter two.
 9. Report verified behavior and remaining gaps to the user. Follow the project's own rules and the user's authorization for merging, deployment, and messages to people or external services.
 
-## Incremental re-review
-
-- Keep a review baseline: exact reviewed commit, base commit, disposition of each finding, checks run, environment, and acceptance items still open. A new commit does not erase that evidence.
-- For a follow-up review, inspect the delta from the last reviewed commit and the paths or contracts it affects. Recheck prior findings where the fix or their assumptions changed; do not repeat unaffected checks solely because the PR head moved.
-- Use current CI as evidence for an unchanged full suite. Run focused checks for the delta and affected user flows. Repeat broader local tests or end-to-end acceptance when the prior baseline is missing or unreliable, the base or shared behavior changed, CI disagrees, or the change's risk warrants it. Explicit project or user requirements still apply.
-- Report carried-forward evidence separately from checks performed in the current review. Never turn a previous agent's claim into an independently verified result, or mark an untested release gate complete.
-
 ## Isolation and evidence
 
 - Prefer a separate branch and checkout for each agent when using Git. In other environments, require an equivalent isolated deliverable and a clear base revision.
