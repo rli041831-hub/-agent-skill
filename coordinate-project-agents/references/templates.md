@@ -73,14 +73,13 @@ Reviewer result: [Approved, changes requested, or blocked, with evidence]
 
 ```markdown
 Review [PR or artifact URL] at exact revision [SHA/version] against [base revision].
-For a re-review, the last reviewed revision is [SHA/version]; its findings and open acceptance items are [links/summary].
-Read [project instructions] and [contract]. On a first review inspect the complete change; on a re-review inspect the new delta and affected paths, including generated or configuration files where relevant.
+Read [project instructions], [contract], and the complete change, including generated or configuration files.
 
 Check: [observable user flow], [data/permission boundaries], [failure and recovery cases], [compatibility], [secrets and runtime data].
-Run focused checks for the new delta: [exact commands]. Record current CI for the full suite; repeat broader local checks if the baseline, changed interfaces, or risk requires it. Compare any failures with equivalent checks on the base before labeling them pre-existing.
-Verify open real-environment gates: [API/browser/service scenario and expected result]. Do not substitute a fixture or unit test for this item.
+Run: [exact commands]. Compare any failures with the same commands and relevant environment on the base revision before labeling them pre-existing.
+Verify in a real environment: [API/browser/service scenario and expected result]. Do not substitute a fixture or unit test for this item.
 
-Return findings first with severity, file and line, risk, and reproduction. Then separate prior evidence carried forward, checks performed now, external claims, and remaining unverified items; include exact revisions, commands, counts, and environment differences.
+Return findings first with severity, file and line, risk, and reproduction. Then report exact revision, commands and counts, environment differences, direct observations, external claims, and unverified items separately.
 Do not merge or publish without explicit authorization. If review permissions are unavailable, return the report for relay; do not claim a GitHub review was submitted.
 ```
 
