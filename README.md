@@ -33,5 +33,12 @@ For each deliverable, keep the base and head revisions explicit. Separate an ext
 
 Do not put API keys, private code, paid data, runtime caches, or conversation transcripts into public briefs or repositories. Confirm authorization before merging, deploying, or sending content to an external service.
 
+
+## Idea to Business
+
+[`idea-to-business`](idea-to-business) helps turn fragmented business ideas into confirmed requirements, evidence-based research, validation preparation, reports, financial scenarios, action plans and five visual directions per section. It includes send-once recovery and original-image import helpers, while keeping human decisions and real market validation explicit.
+
+See the [Chinese usage and validation guide](idea-to-business-guide.md) for installation, tested image retrieval, dependencies and current limits. The repository contains no private chats, account sessions or real test images.
+
 Licensed under [MIT](LICENSE).
 

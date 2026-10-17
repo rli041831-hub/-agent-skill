@@ -1,0 +1,6 @@
+interface:
+  display_name: "想法梳理与商业研究"
+  short_description: "逐轮问清想法，核验商业依据，形成报告、测算、行动计划与五版视觉材料"
+  default_prompt: "使用 $idea-to-business 帮我梳理这个商业想法；你主导框架，先问清关键问题，再按阶段研究、报告和安排五版图片。"
+policy:
+  allow_implicit_invocation: true

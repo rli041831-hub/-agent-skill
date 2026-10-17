@@ -1,0 +1,23 @@
+{
+  "project_id": "example-project",
+  "section_id": "section-one",
+  "revision": "r1",
+  "round": 1,
+  "content_revision": "content-v1",
+  "stage_approval": {"content_revision": "content-v1", "user_message_ref": "填写实际用户确认记录；此模板不是批准"},
+  "content": [
+    {"id": "C1", "text": "填写已确认的必要内容，不使用本例作为真实报告。", "evidence_ids": ["E1"]}
+  ],
+  "sources": [{"id": "E1", "status": "填写事实、估算或待验证状态", "reference": "填写实际来源与统计口径"}],
+  "style_mode": "initial",
+  "style_reference": "尚未锁定；首轮探索五种风格",
+  "assets_to_attach": [],
+  "changes": "首轮，无用户反馈修改",
+  "variants": [
+    {"id": "V1", "direction": "简洁编辑式，文字层级与信息分区"},
+    {"id": "V2", "direction": "数据图解式，因果与结构可视化"},
+    {"id": "V3", "direction": "叙事式，通过场景串联内容"},
+    {"id": "V4", "direction": "商务演示式，结论与行动突出"},
+    {"id": "V5", "direction": "信息地图式，关系和路径展示"}
+  ]
+}

@@ -1,0 +1,178 @@
+<div id="__ROOT_ID__">
+  <div class="viz-row">
+    <span id="iw-page-label" class="text-small"></span>
+    <span id="iw-answer-count" class="text-small text-muted" aria-live="polite"></span>
+  </div>
+  <p class="text-small text-muted">每题可多选、自行补充或暂时跳过；最后查看汇总再提交。</p>
+  <div id="iw-question-area"></div>
+  <div id="iw-review-area" hidden>
+    <h3>提交前确认</h3>
+    <textarea id="iw-review-text" class="form-control" rows="14" readonly aria-label="本轮回答汇总"></textarea>
+  </div>
+  <div class="viz-row" style="margin-top:16px">
+    <button id="iw-prev" class="btn" type="button" disabled>上一页</button>
+    <button id="iw-next" class="btn btn-primary" type="button">下一页</button>
+    <button id="iw-copy" class="btn" type="button" hidden>复制回答</button>
+    <button id="iw-submit" class="btn btn-primary" type="button" hidden>提交本轮回答</button>
+  </div>
+  <p id="iw-status" class="text-small" role="status" aria-live="polite"></p>
+</div>
+<style>
+  #__ROOT_ID__ .iw-question-title { margin-top:16px; }
+  #__ROOT_ID__ .iw-option-list { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+  #__ROOT_ID__ .iw-supplement { display:block; margin-top:16px; }
+  #__ROOT_ID__ [hidden] { display:none !important; }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('__ROOT_ID__');
+  const config = __CONFIG_JSON__;
+  const questions = config.questions;
+  const total = questions.length;
+  const schema = config.schema;
+  let answers = questions.map(()=>({selected:[],supplement:''}));
+  let page = 0;
+  let sending = false;
+  let composing = false;
+  let hasLocalEdits = false;
+  let saveTimer = null;
+  let saveQueue = Promise.resolve();
+  let revision = 0;
+  const instanceId = 'iw-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  const area = root.querySelector('#iw-question-area');
+  const reviewArea = root.querySelector('#iw-review-area');
+  const reviewText = root.querySelector('#iw-review-text');
+  const prev = root.querySelector('#iw-prev');
+  const next = root.querySelector('#iw-next');
+  const copy = root.querySelector('#iw-copy');
+  const submit = root.querySelector('#iw-submit');
+  const status = root.querySelector('#iw-status');
+  function restore(saved) {
+    const model = saved && (saved.modelContent || saved);
+    if (!model || model.schema !== schema || !Array.isArray(model.answers)) return false;
+    answers = questions.map((q,i) => {
+      const a = model.answers[i] || {};
+      return {selected:Array.isArray(a.selected) ? a.selected.filter(v=>Number.isInteger(v)&&v>=0&&v<q.options.length) : [],supplement:typeof a.supplement==='string' ? a.supplement.slice(0,1000) : ''};
+    });
+    const savedPage = saved.privateContent && saved.privateContent.page;
+    page = Number.isInteger(savedPage) ? Math.max(0,Math.min(total,savedPage)) : 0;
+    return true;
+  }
+  function answeredCount() {
+    return answers.filter(a=>a.selected.length || a.supplement.trim()).length;
+  }
+  function summary() {
+    return questions.map((q,i) => {
+      const a = answers[i];
+      const picks = a.selected.map(v=>q.options[v]);
+      return q.title+'\n选择：'+(picks.length?picks.join('；'):'未选择 / 暂不确定')+'\n补充：'+(a.supplement.trim()||'无');
+    }).join('\n\n');
+  }
+  function countLabel() {
+    root.querySelector('#iw-answer-count').textContent='已回答 '+answeredCount()+' / '+total+' 题';
+  }
+  function persist() {
+    if (saveTimer !== null) { clearTimeout(saveTimer); saveTimer = null; }
+    if (window.openai && typeof window.openai.setWidgetState==='function') {
+      const snapshot = {modelContent:{schema,round:config.round,answers:answers.map(a=>({selected:a.selected.slice(),supplement:a.supplement}))},privateContent:{page,instanceId,revision:++revision}};
+      if(new TextEncoder().encode(JSON.stringify(snapshot)).length>=16000){status.textContent='回答较长，暂未保存到状态；请在汇总页复制回答。';return;}
+      saveQueue = saveQueue.then(()=>window.openai.setWidgetState(snapshot)).catch(()=>{status.textContent='状态保存未完成，本页回答仍保留；提交前可复制备份。';});
+    }
+  }
+  function scheduleSave() {
+    if (saveTimer !== null) clearTimeout(saveTimer);
+    saveTimer = setTimeout(persist, 300);
+  }
+  function render() {
+    area.replaceChildren();
+    status.textContent='';
+    const reviewing = page===total;
+    root.querySelector('#iw-page-label').textContent=config.title+' · '+(reviewing?'回答汇总':(page+1)+' / '+total);
+    area.hidden=reviewing;
+    reviewArea.hidden=!reviewing;
+    prev.disabled=page===0||sending;
+    next.hidden=reviewing;
+    copy.hidden=!reviewing;
+    submit.hidden=!reviewing;
+    submit.disabled=sending;
+    next.textContent=page===total-1?'查看回答汇总':'下一页';
+    countLabel();
+    if (reviewing) { reviewText.value=summary(); return; }
+    const q=questions[page];
+    const currentPage=page;
+    const h=document.createElement('h3'); h.className='iw-question-title'; h.textContent=q.title; area.append(h);
+    if (q.hint) { const note=document.createElement('p'); note.className='text-small text-muted'; note.textContent=q.hint; area.append(note); }
+    const options=document.createElement('div'); options.className='iw-option-list';
+    q.options.forEach((text,index)=>{
+      const label=document.createElement('label'); label.className='form-check';
+      const input=document.createElement('input'); input.className='form-check-input'; input.type='checkbox'; input.checked=answers[currentPage].selected.includes(index);
+      const span=document.createElement('span'); span.className='form-check-label'; span.textContent=text;
+      input.addEventListener('change',()=>{
+        hasLocalEdits = true;
+        const selected=new Set(answers[currentPage].selected);
+        input.checked?selected.add(index):selected.delete(index);
+        answers[currentPage].selected=Array.from(selected).sort((a,b)=>a-b);
+        countLabel(); persist();
+      });
+      label.append(input,span); options.append(label);
+    });
+    area.append(options);
+    const label=document.createElement('label'); label.className='form-label iw-supplement'; label.htmlFor='iw-supplement'; label.textContent='自行补充';
+    const field=document.createElement('textarea'); field.id='iw-supplement'; field.className='form-control'; field.rows=3; field.maxLength=1000; field.placeholder='补充想法、优先级或暂不确定的地方；长材料可直接发在聊天中'; field.value=answers[currentPage].supplement;
+    field.addEventListener('compositionstart',()=>{
+      composing = true;
+      if (saveTimer !== null) { clearTimeout(saveTimer); saveTimer = null; }
+    });
+    field.addEventListener('input',event=>{
+      hasLocalEdits = true;
+      answers[currentPage].supplement=field.value;
+      countLabel();
+      if (!composing && !event.isComposing) scheduleSave();
+    });
+    field.addEventListener('compositionend',()=>{
+      composing = false;
+      hasLocalEdits = true;
+      answers[currentPage].supplement=field.value;
+      countLabel(); scheduleSave();
+    });
+    field.addEventListener('blur',()=>{
+      answers[currentPage].supplement=field.value;
+      if (!composing && saveTimer !== null) persist();
+    });
+    area.append(label,field);
+  }
+  prev.addEventListener('click',()=>{if(page>0){hasLocalEdits=true;page--;render();persist();}});
+  next.addEventListener('click',()=>{if(page<total){hasLocalEdits=true;page++;render();persist();}});
+  copy.addEventListener('click',async()=>{
+    try {
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText!=='function') throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(summary()); status.textContent='回答已复制，可以粘贴回聊天。';
+    } catch(e) {reviewText.focus();reviewText.select();status.textContent='请复制已选中的回答，粘贴回聊天。';}
+  });
+  submit.addEventListener('click',async()=>{
+    if(sending)return;
+    if(!answeredCount()){status.textContent='本轮还没有选择或补充；可以先回答一题，或直接在聊天里说明暂不确定。';return;}
+    if(!window.openai || typeof window.openai.sendFollowUpMessage!=='function') {status.textContent='当前无法自动提交。请复制汇总回答，粘贴回聊天。';return;}
+    sending=true;submit.disabled=true;prev.disabled=true;status.textContent='等待提交确认…';
+    try {
+      await window.openai.sendFollowUpMessage({title:'提交'+config.title+'回答',prompt:'这是 $idea-to-business 的需求访谈回答（'+schema+'）：\n\n'+summary()+'\n\n'+config.followup});
+      status.textContent='提交请求已处理；以聊天中实际出现的消息为准。';
+    } catch(e) {status.textContent='提交未完成，选择已保留。可重试，或复制汇总回答。';}
+    finally {sending=false;submit.disabled=false;prev.disabled=false;}
+  });
+  restore(window.openai && window.openai.widgetState);
+  window.addEventListener('openai:set_globals',event=>{
+    const globals=event.detail && event.detail.globals;
+    if (!globals || !Object.prototype.hasOwnProperty.call(globals,'widgetState')) return;
+    const saved = globals.widgetState;
+    if (saved && saved.privateContent && saved.privateContent.instanceId===instanceId && saved.privateContent.revision<=revision) return;
+    // Local interaction is authoritative until this instance is unloaded.
+    // Host echoes, delayed snapshots, and IME events must never replace an active field.
+    if (hasLocalEdits || composing || root.contains(document.activeElement)) return;
+    const previousAnswers = JSON.stringify(answers);
+    const previousPage = page;
+    if (restore(saved) && (previousPage!==page || previousAnswers!==JSON.stringify(answers))) render();
+  });
+  render();
+})();
+</script>
